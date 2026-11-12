@@ -21,6 +21,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
   static const _showLog = 'showLog';
   static const _showOptions = 'showOptions';
   static const _sendToTarget = 'sendToTarget';
+  static const _themeMode = 'themeMode';
 
   @override
   Future<AppSettings> load() async {
@@ -39,6 +40,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       showLog: _prefs.getBool(_showLog) ?? d.showLog,
       showOptions: _prefs.getBool(_showOptions) ?? d.showOptions,
       sendToTarget: _prefs.getString(_sendToTarget) ?? d.sendToTarget,
+      themeMode: AppThemeMode.fromName(_prefs.getString(_themeMode)),
     );
   }
 
@@ -57,6 +59,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       _prefs.setBool(_showLog, s.showLog),
       _prefs.setBool(_showOptions, s.showOptions),
       _prefs.setString(_sendToTarget, s.sendToTarget),
+      _prefs.setString(_themeMode, s.themeMode.name),
     ]);
   }
 }

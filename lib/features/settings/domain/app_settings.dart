@@ -3,6 +3,16 @@ import 'package:equatable/equatable.dart';
 import '../../conversion/domain/entities/conversion_options.dart';
 import '../../conversion/domain/entities/target_format.dart';
 
+/// Tema: segue o Windows até o usuário escolher claro ou escuro.
+enum AppThemeMode {
+  system,
+  light,
+  dark;
+
+  static AppThemeMode fromName(String? name) =>
+      values.firstWhere((m) => m.name == name, orElse: () => system);
+}
+
 /// Opções lembradas entre usos do aplicativo.
 class AppSettings extends Equatable {
   const AppSettings({
@@ -18,6 +28,7 @@ class AppSettings extends Equatable {
     this.showLog = false,
     this.showOptions = true,
     this.sendToTarget = '',
+    this.themeMode = AppThemeMode.system,
   });
 
   static const jpgPresetLabels = [
@@ -50,6 +61,9 @@ class AppSettings extends Equatable {
   /// vez; se o app mudar de pasta, o atalho é recriado.
   final String sendToTarget;
 
+  /// Tema escolhido no botão do canto superior direito.
+  final AppThemeMode themeMode;
+
   int get jpgQuality => ConversionOptions.jpgQualities[jpgPreset.clamp(0, 2)];
   int get dpi => ConversionOptions.dpiValues[dpiPreset.clamp(0, 2)];
 
@@ -78,8 +92,10 @@ class AppSettings extends Equatable {
     bool? showLog,
     bool? showOptions,
     String? sendToTarget,
+    AppThemeMode? themeMode,
   }) =>
       AppSettings(
+        themeMode: themeMode ?? this.themeMode,
         sendToTarget: sendToTarget ?? this.sendToTarget,
         jpgPreset: jpgPreset ?? this.jpgPreset,
         dpiPreset: dpiPreset ?? this.dpiPreset,
@@ -108,5 +124,6 @@ class AppSettings extends Equatable {
         showLog,
         showOptions,
         sendToTarget,
+        themeMode,
       ];
 }

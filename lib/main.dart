@@ -15,6 +15,7 @@ import 'features/conversion/presentation/pages/home_page.dart';
 import 'features/diagnostics/presentation/diagnostics_cubit.dart';
 import 'features/diagnostics/presentation/headless_self_test.dart';
 import 'features/integration/presentation/system_integration_sync.dart';
+import 'features/settings/domain/app_settings.dart';
 import 'features/settings/presentation/settings_cubit.dart';
 
 /// [args]: arquivos recebidos pelo "Enviar para" do Explorer, ou
@@ -94,19 +95,32 @@ Future<void> main(List<String> args) async {
 class ConverterApp extends StatelessWidget {
   const ConverterApp({super.key});
 
+  static final _light = AppTheme.light();
+  static final _dark = AppTheme.dark();
+
+  static ThemeMode _toThemeMode(AppThemeMode mode) => switch (mode) {
+        AppThemeMode.system => ThemeMode.system,
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+      };
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Conversor de Arquivos',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      locale: const Locale('pt', 'BR'),
-      home: HomePage(
-        getTargets: sl(),
-        dialogs: const FileSelectorDialogs(),
-        shell: sl(),
-        createDiagnosticsCubit: sl.call<DiagnosticsCubit>,
+    return BlocSelector<SettingsCubit, AppSettings, AppThemeMode>(
+      selector: (settings) => settings.themeMode,
+      builder: (context, mode) => MaterialApp(
+        title: 'Conversor de Arquivos',
+        debugShowCheckedModeBanner: false,
+        theme: _light,
+        darkTheme: _dark,
+        themeMode: _toThemeMode(mode),
+        locale: const Locale('pt', 'BR'),
+        home: HomePage(
+          getTargets: sl(),
+          dialogs: const FileSelectorDialogs(),
+          shell: sl(),
+          createDiagnosticsCubit: sl.call<DiagnosticsCubit>,
+        ),
       ),
     );
   }

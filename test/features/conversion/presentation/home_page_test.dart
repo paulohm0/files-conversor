@@ -168,6 +168,48 @@ void main() {
     expect(find.byKey(const Key('run-diagnostics')), findsNothing);
   });
 
+  testWidgets('theme button switches light and dark and is remembered',
+      (tester) async {
+    await pump(tester);
+    expect(find.byIcon(Icons.dark_mode_outlined), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('toggle-theme')));
+    await tester.pump();
+    expect(settings.state.themeMode, AppThemeMode.dark);
+  });
+
+  testWidgets('options: qualities on top, checkboxes, then "Salvar em"',
+      (tester) async {
+    await pump(tester);
+    final quality =
+        tester.getTopLeft(find.byKey(const Key('option-jpg-quality'))).dy;
+    final check =
+        tester.getTopLeft(find.byKey(const Key('option-confirm'))).dy;
+    final saveIn =
+        tester.getTopLeft(find.byKey(const Key('option-save-in'))).dy;
+    expect(quality, lessThan(check));
+    expect(check, lessThan(saveIn));
+
+    // Valores das listas no mesmo tamanho dos rótulos ao lado.
+    final label = tester.widget<RichText>(
+      find
+          .descendant(
+            of: find.byKey(const Key('option-jpg-quality')),
+            matching: find.byType(RichText),
+          )
+          .first,
+    );
+    final value = tester.widget<RichText>(
+      find
+          .descendant(
+            of: find.byKey(const Key('option-jpg-quality')),
+            matching: find.byType(RichText),
+          )
+          .at(1),
+    );
+    expect(value.text.style?.fontSize, label.text.style?.fontSize);
+  });
+
   testWidgets('log panel toggles', (tester) async {
     await pump(tester);
     expect(find.byKey(const Key('log-panel')), findsNothing);

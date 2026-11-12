@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/path_utils.dart';
+import '../../../../core/theme.dart';
 import '../../../diagnostics/presentation/diagnostics_cubit.dart';
 import '../../../diagnostics/presentation/diagnostics_dialog.dart';
 import '../../../settings/domain/app_settings.dart';
@@ -132,6 +133,16 @@ class _HomePageState extends State<HomePage> {
         ? output
         : (isExistingFile(job.path) ? job.path : null);
     if (target != null) await widget.shell.revealInExplorer(target);
+  }
+
+  /// Alterna entre claro e escuro a partir do tema que está na tela.
+  Future<void> _toggleTheme() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return _settings.update(
+      (s) => s.copyWith(
+        themeMode: isDark ? AppThemeMode.light : AppThemeMode.dark,
+      ),
+    );
   }
 
   Future<void> _showDiagnostics() async {
@@ -269,13 +280,14 @@ class _HomePageState extends State<HomePage> {
                     onRemove: _conversion.removeSelected,
                     onClear: _conversion.clearList,
                     onDiagnostics: _showDiagnostics,
+                    onToggleTheme: _toggleTheme,
                   ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 120),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppTheme.borderRadius,
                         border: Border.all(
                           width: 2,
                           color: _dragging
@@ -352,6 +364,7 @@ class _Toolbar extends StatelessWidget {
     required this.onRemove,
     required this.onClear,
     required this.onDiagnostics,
+    required this.onToggleTheme,
   });
 
   final bool enabled;
@@ -362,9 +375,11 @@ class _Toolbar extends StatelessWidget {
   final VoidCallback onRemove;
   final VoidCallback onClear;
   final VoidCallback onDiagnostics;
+  final VoidCallback onToggleTheme;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Widget tip(String message, Widget child) => Tooltip(
           message: message,
           waitDuration: const Duration(milliseconds: 600),
@@ -374,7 +389,15 @@ class _Toolbar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: _buttons(tip)),
-        // Discreto, no canto: testa as conversões neste computador.
+        // Discretos, no canto: tema e teste das conversões.
+        IconButton(
+          key: const Key('toggle-theme'),
+          tooltip: isDark ? 'Usar tema claro' : 'Usar tema escuro',
+          onPressed: onToggleTheme,
+          icon: Icon(
+            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          ),
+        ),
         IconButton(
           key: const Key('test-conversions'),
           tooltip: 'Testar conversões',
