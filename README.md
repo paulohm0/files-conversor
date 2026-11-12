@@ -25,7 +25,8 @@ O projeto nasceu como um script em PowerShell + Windows Forms (~2000 linhas) que
 - Nunca sobrescreve: gera `nome (1).ext`, `nome (2).ext`...
 - Original vai para a **Lixeira** (nunca exclusão permanente) só se a opção estiver marcada e a saída existir e não estiver vazia
 - Histórico na lista: itens convertidos podem ser selecionados e reconvertidos
-- Atalho "Enviar para" do Explorer (os arquivos chegam por `main(args)`)
+- Atalho "Enviar para" do Explorer sempre instalado: o app confere a cada abertura e recria se faltar ou se o `.exe` mudar de pasta (os arquivos chegam por `main(args)`)
+- Opção "Iniciar com o Windows": abre minimizado no logon, pela chave `Run` do usuário (sem precisar de administrador)
 - Tela de diagnóstico: autoteste que cria arquivos de exemplo, testa cada motor isoladamente e gera relatório `.txt` e `.csv`
 - Tema claro e escuro seguindo o sistema, interface em português
 
@@ -44,6 +45,7 @@ lib/
       data/              # Motores, codec de imagens, ponte PowerShell, registro/Lixeira/Explorer do Windows
       presentation/      # Cubits, tela principal e widgets
     settings/            # Opções persistidas (SettingsCubit)
+    integration/         # "Enviar para" e inicialização com o Windows
     diagnostics/         # Autoteste (DiagnosticsCubit)
   main.dart
 assets/
