@@ -116,13 +116,15 @@ flutter pub get
 flutter run -d windows
 ```
 
-Para gerar o executável (roda análise, testes e build release):
+Para gerar o instalador (roda análise, testes, build release e o Inno Setup):
 
 ```bash
 build.bat
 ```
 
-O `.exe` fica em `build\windows\x64\runner\Release\`. Para distribuir, copie a pasta `Release` inteira.
+O resultado é um único arquivo, `dist\ConversorArquivos-Setup-<versão>.exe` (~15 MB), pronto para enviar. Ele instala só para o usuário em `%LOCALAPPDATA%\Programs`, sem pedir administrador, cria atalhos no Menu Iniciar (e, opcionalmente, na Área de Trabalho) e registra o desinstalador em "Aplicativos instalados", que remove também o atalho "Enviar para". O script do instalador está em `installer/conversor.iss`; o Inno Setup pode ser instalado com `winget install JRSoftware.InnoSetup`.
+
+Como o executável não tem assinatura digital, na primeira execução o Windows pode mostrar "O Windows protegeu o computador": basta clicar em "Mais informações" → "Executar assim mesmo".
 
 **Motores opcionais:** Microsoft Office e Adobe Acrobat Pro/Standard são detectados pelo registro. O LibreOffice pode estar instalado ou numa pasta `engines\LibreOffice` ao lado do `.exe`; o `pdf2docx` pode estar no PATH ou em `engines\pdf2docx\`.
 
@@ -133,6 +135,7 @@ O `.exe` fica em `build\windows\x64\runner\Release\`. Para distribuir, copie a p
 - ✅ Cadeia de fallback, Lixeira, cancelamento, "Enviar para" e autoteste
 - ✅ Testes unitários, de widget e de integração com o Office
 - ✅ Build release validado ponta a ponta pelo autoteste (imagens, PDF → imagem, Word, Excel, PowerPoint, juntar PDF e Lixeira)
+- ✅ Instalador Inno Setup testado: instalação sem administrador, autoteste no app instalado e desinstalação limpa
 - ⏳ Validação com Acrobat Pro/Standard licenciado, LibreOffice e pdf2docx instalados
 
 ## > Habilidades Testadas
