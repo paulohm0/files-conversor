@@ -175,6 +175,17 @@ class OptionsPanel extends StatelessWidget {
                               (s) => s.copyWith(confirmBeforeConvert: v),
                             ),
                           ),
+                          _Check(
+                            key: const Key('option-startup'),
+                            label: 'Iniciar com o Windows (minimizado)',
+                            tooltip: 'Abre o Conversor minimizado ao entrar '
+                                'no Windows. O atalho "Enviar para" do botão '
+                                'direito fica sempre instalado.',
+                            value: settings.startWithWindows,
+                            onChanged: (v) => onChanged(
+                              (s) => s.copyWith(startWithWindows: v),
+                            ),
+                          ),
                         ],
                       ),
                     ],

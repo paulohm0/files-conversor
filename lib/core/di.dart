@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,6 +23,9 @@ import '../features/diagnostics/data/file_sample_factory.dart';
 import '../features/diagnostics/domain/diagnostic_models.dart';
 import '../features/diagnostics/domain/run_diagnostics.dart';
 import '../features/diagnostics/presentation/diagnostics_cubit.dart';
+import '../features/integration/data/windows_system_integration.dart';
+import '../features/integration/domain/ensure_system_integration.dart';
+import '../features/integration/domain/system_integration.dart';
 import '../features/settings/data/shared_prefs_settings_repository.dart';
 import '../features/settings/domain/settings_repository.dart';
 import '../features/settings/presentation/settings_cubit.dart';
@@ -47,7 +52,16 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<EngineDetector>(() => WindowsEngineDetector(sl()))
     ..registerLazySingleton<RecycleBin>(() => const WindowsRecycleBin())
     ..registerLazySingleton<ShellIntegration>(
-      () => WindowsShellIntegration(sl()),
+      () => const WindowsShellIntegration(),
+    )
+    ..registerLazySingleton<SystemIntegration>(
+      () => WindowsSystemIntegration(sl()),
+    )
+    ..registerLazySingleton(
+      () => EnsureSystemIntegration(
+        sl(),
+        executable: Platform.resolvedExecutable,
+      ),
     )
     ..registerLazySingleton<ClipboardFiles>(() => const SuperClipboardFiles())
     ..registerLazySingleton<SettingsRepository>(

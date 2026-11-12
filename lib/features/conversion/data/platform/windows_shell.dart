@@ -6,7 +6,6 @@ import 'package:super_clipboard/super_clipboard.dart';
 import 'package:win32/win32.dart';
 
 import '../../domain/contracts/repositories.dart';
-import '../bridge/office_bridge.dart';
 
 /// Lixeira do Windows via `SHFileOperation` com `FOF_ALLOWUNDO`: o arquivo
 /// fica recuperável. Sem `FOF_ALLOWUNDO` seria exclusão permanente, então a
@@ -42,9 +41,7 @@ class WindowsRecycleBin implements RecycleBin {
 }
 
 class WindowsShellIntegration implements ShellIntegration {
-  const WindowsShellIntegration(this._bridge);
-
-  final OfficeBridge _bridge;
+  const WindowsShellIntegration();
 
   @override
   Future<void> revealInExplorer(String path) async {
@@ -54,15 +51,6 @@ class WindowsShellIntegration implements ShellIntegration {
   @override
   Future<void> openFolder(String path) async {
     await Process.start('explorer.exe', [path]);
-  }
-
-  @override
-  Future<void> installSendToShortcut() async {
-    try {
-      await _bridge.send('sendto', {'exe': Platform.resolvedExecutable});
-    } finally {
-      await _bridge.close();
-    }
   }
 }
 

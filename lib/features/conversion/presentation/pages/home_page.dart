@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/errors.dart';
 import '../../../../core/path_utils.dart';
 import '../../../diagnostics/presentation/diagnostics_cubit.dart';
 import '../../../diagnostics/presentation/diagnostics_dialog.dart';
@@ -132,24 +131,6 @@ class _HomePageState extends State<HomePage> {
         ? output
         : (isExistingFile(job.path) ? job.path : null);
     if (target != null) await widget.shell.revealInExplorer(target);
-  }
-
-  Future<void> _installSendTo() async {
-    try {
-      await widget.shell.installSendToShortcut();
-      await _showMessage(
-        'Pronto! Agora, no Explorer:\n\n'
-        '1. Selecione os arquivos\n'
-        '2. Clique com o botão direito\n'
-        '3. Enviar para → Conversor de Arquivos\n\n'
-        "(No Windows 11, o 'Enviar para' fica em 'Mostrar mais opções'.)\n\n"
-        'Se você mudar o conversor de pasta, clique neste botão de novo.',
-      );
-    } on Object catch (e) {
-      await _showMessage(
-        'Não foi possível criar o atalho: ${describeError(e)}',
-      );
-    }
   }
 
   Future<void> _showDiagnostics() async {
@@ -286,7 +267,6 @@ class _HomePageState extends State<HomePage> {
                     onPaste: _conversion.addFromClipboard,
                     onRemove: _conversion.removeSelected,
                     onClear: _conversion.clearList,
-                    onSendTo: _installSendTo,
                     onDiagnostics: _showDiagnostics,
                   ),
                   const SizedBox(height: 10),
@@ -370,7 +350,6 @@ class _Toolbar extends StatelessWidget {
     required this.onPaste,
     required this.onRemove,
     required this.onClear,
-    required this.onSendTo,
     required this.onDiagnostics,
   });
 
@@ -381,7 +360,6 @@ class _Toolbar extends StatelessWidget {
   final VoidCallback onPaste;
   final VoidCallback onRemove;
   final VoidCallback onClear;
-  final VoidCallback onSendTo;
   final VoidCallback onDiagnostics;
 
   @override
@@ -428,15 +406,6 @@ class _Toolbar extends StatelessWidget {
           label: const Text('Limpar lista'),
         ),
         const SizedBox(width: 12),
-        tip(
-          "Adiciona 'Conversor de Arquivos' ao menu 'Enviar para' do botão "
-          'direito',
-          TextButton.icon(
-            onPressed: enabled ? onSendTo : null,
-            icon: const Icon(Icons.send_outlined),
-            label: const Text('Ativar botão direito do Explorer'),
-          ),
-        ),
         tip(
           'Autoteste com arquivos de exemplo e relatório',
           TextButton.icon(

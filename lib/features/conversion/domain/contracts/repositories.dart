@@ -34,9 +34,6 @@ abstract interface class ShellIntegration {
 
   /// Abre a pasta.
   Future<void> openFolder(String path);
-
-  /// Cria o atalho "Enviar para" apontando para este executável.
-  Future<void> installSendToShortcut();
 }
 
 /// Diálogos de escolha de arquivos e pastas.

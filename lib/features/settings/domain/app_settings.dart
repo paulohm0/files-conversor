@@ -17,6 +17,8 @@ class AppSettings extends Equatable {
     this.confirmBeforeConvert = true,
     this.showLog = false,
     this.showOptions = true,
+    this.startWithWindows = true,
+    this.sendToTarget = '',
   });
 
   static const jpgPresetLabels = [
@@ -45,6 +47,13 @@ class AppSettings extends Equatable {
   final bool showLog;
   final bool showOptions;
 
+  /// Abrir minimizado junto com o Windows.
+  final bool startWithWindows;
+
+  /// Executável para o qual o atalho "Enviar para" foi criado pela última
+  /// vez; se o app mudar de pasta, o atalho é recriado.
+  final String sendToTarget;
+
   int get jpgQuality => ConversionOptions.jpgQualities[jpgPreset.clamp(0, 2)];
   int get dpi => ConversionOptions.dpiValues[dpiPreset.clamp(0, 2)];
 
@@ -72,8 +81,12 @@ class AppSettings extends Equatable {
     bool? confirmBeforeConvert,
     bool? showLog,
     bool? showOptions,
+    bool? startWithWindows,
+    String? sendToTarget,
   }) =>
       AppSettings(
+        startWithWindows: startWithWindows ?? this.startWithWindows,
+        sendToTarget: sendToTarget ?? this.sendToTarget,
         jpgPreset: jpgPreset ?? this.jpgPreset,
         dpiPreset: dpiPreset ?? this.dpiPreset,
         mergeImages: mergeImages ?? this.mergeImages,
@@ -100,5 +113,7 @@ class AppSettings extends Equatable {
         confirmBeforeConvert,
         showLog,
         showOptions,
+        startWithWindows,
+        sendToTarget,
       ];
 }

@@ -20,6 +20,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
   static const _confirm = 'confirmBeforeConvert';
   static const _showLog = 'showLog';
   static const _showOptions = 'showOptions';
+  static const _startWithWindows = 'startWithWindows';
+  static const _sendToTarget = 'sendToTarget';
 
   @override
   Future<AppSettings> load() async {
@@ -37,6 +39,9 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       confirmBeforeConvert: _prefs.getBool(_confirm) ?? d.confirmBeforeConvert,
       showLog: _prefs.getBool(_showLog) ?? d.showLog,
       showOptions: _prefs.getBool(_showOptions) ?? d.showOptions,
+      startWithWindows:
+          _prefs.getBool(_startWithWindows) ?? d.startWithWindows,
+      sendToTarget: _prefs.getString(_sendToTarget) ?? d.sendToTarget,
     );
   }
 
@@ -54,6 +59,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       _prefs.setBool(_confirm, s.confirmBeforeConvert),
       _prefs.setBool(_showLog, s.showLog),
       _prefs.setBool(_showOptions, s.showOptions),
+      _prefs.setBool(_startWithWindows, s.startWithWindows),
+      _prefs.setString(_sendToTarget, s.sendToTarget),
     ]);
   }
 }

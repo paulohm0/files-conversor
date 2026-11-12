@@ -14,17 +14,25 @@ import 'features/conversion/presentation/cubit/engines_cubit.dart';
 import 'features/conversion/presentation/pages/home_page.dart';
 import 'features/diagnostics/presentation/diagnostics_cubit.dart';
 import 'features/diagnostics/presentation/headless_self_test.dart';
+import 'features/integration/domain/ensure_system_integration.dart';
+import 'features/integration/presentation/system_integration_sync.dart';
 import 'features/settings/presentation/settings_cubit.dart';
 
-/// [args]: arquivos recebidos pelo "Enviar para" do Explorer, ou
-/// `--autoteste [pasta]` para rodar o diagnóstico sem abrir a janela.
-Future<void> main(List<String> args) async {
+/// [arguments]: arquivos recebidos pelo "Enviar para" do Explorer;
+/// `--minimizado` (usado na inicialização com o Windows) abre minimizado;
+/// `--autoteste [pasta]` roda o diagnóstico sem abrir a janela.
+Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (args.isNotEmpty && args.first == '--autoteste') {
+  if (arguments.isNotEmpty && arguments.first == '--autoteste') {
     await pdfrxFlutterInitialize();
     await configureDependencies();
-    exit(await runHeadlessSelfTest(args.length > 1 ? args[1] : null));
+    exit(
+      await runHeadlessSelfTest(arguments.length > 1 ? arguments[1] : null),
+    );
   }
+  final minimized = arguments.contains(startupArgument);
+  final args = arguments.where((a) => a != startupArgument).toList();
+
   await windowManager.ensureInitialized();
   await windowManager.waitUntilReadyToShow(
     const WindowOptions(
@@ -34,8 +42,12 @@ Future<void> main(List<String> args) async {
       center: true,
     ),
     () async {
-      await windowManager.show();
-      await windowManager.focus();
+      if (minimized) {
+        await windowManager.minimize();
+      } else {
+        await windowManager.show();
+        await windowManager.focus();
+      }
     },
   );
 
@@ -71,6 +83,11 @@ Future<void> main(List<String> args) async {
     }),
   );
   if (args.isNotEmpty) conversion.addPaths(args);
+
+  // "Enviar para" sempre instalado e inicialização com o Windows em dia.
+  unawaited(
+    SystemIntegrationSync(sl(), settings, conversion).start(),
+  );
 
   runApp(
     MultiBlocProvider(
