@@ -70,8 +70,8 @@ assets/
 - **`OutputAllocator`**: reserva os caminhos de saída de cada arquivo e sabe apagar tudo o que gerou, o que corrige a falha do script original (ao cancelar PDF → imagem, as páginas já gravadas agora são apagadas)
 - **Repository**: `EngineDetector`, `RecycleBin`, `ShellIntegration`, `SettingsRepository` atrás de interfaces, testados com fakes
 - **`ConvertFiles` como `Stream` de eventos** (status, log, progresso, motor desativado, fim): o Cubit só traduz eventos em estado, sem regra de negócio
-- **Ponte PowerShell em vez de COM direto em Dart**: um `powershell.exe -STA` fica vivo durante o lote (reaproveitando a instância do Office) e conversa por stdin/stdout em base64(JSON), sem problema de acentuação ou de aspas em caminhos
-- **Fechamento seguro do Office**: Word, Excel, PowerPoint e Acrobat abrem invisíveis, somente leitura e com macros desativadas, e só são fechados se o usuário não tiver documentos abertos neles
+- **Ponte PowerShell em vez de COM direto em Dart**: um `powershell.exe -STA` fica vivo durante o lote (reaproveitando a instância do Office) e conversa por uma caixa de mensagens em arquivos (`req_N.json` / `resp_N.json`, gravados como `.tmp` e renomeados). O stdin foi descartado como canal porque, quando o PowerShell 5.1 é iniciado pelo Dart, ele só recebe a primeira linha. A ponte também se encerra sozinha se o app fechar
+- **Fechamento seguro do Office**: Word, Excel, PowerPoint e Acrobat abrem invisíveis, somente leitura e com macros desativadas, e só são fechados se o usuário não tiver documentos abertos neles. No caminho foi corrigido um defeito herdado do script: `Word.Quit(0)` falhava em silêncio (o parâmetro é por referência no COM) e deixava um `WINWORD.EXE` aberto a cada lote
 - **Acrobat sem licença**: na primeira falha de automação o motor é desativado na sessão e o usuário é avisado; a conversão segue com o próximo motor
 - **Trabalho pesado fora da UI**: decodificação/codificação de imagem e montagem do PDF em `Isolate.run`, Office e LibreOffice em processos separados
 - **Lixeira via `SHFileOperation` com `FOF_ALLOWUNDO`**: o arquivo é sempre recuperável
@@ -92,8 +92,16 @@ Cobertura nas três camadas:
 - **Dados**: codec de imagens (fundo branco, transparência, ICO, EXIF, geometria A4), `LibreOfficeEngine` com `ProcessRunner` mockado, `WindowsEngineDetector` com registro falso
 - **Apresentação**: Cubits com `bloc_test` e testes de widget da tela principal (área de soltar, diálogo de confirmação com aviso da Lixeira, registro)
 
+- **Integração** (`test/integration`, tag `office`): a ponte PowerShell contra o Office instalado, pulando o que não existir na máquina
+
 ```bash
 flutter test
+```
+
+O próprio executável também roda o autoteste completo sem abrir a janela (útil para validar uma máquina nova):
+
+```bash
+conversor_arquivos.exe --autoteste C:\pasta\do\relatorio
 ```
 
 ## > Como rodar o projeto
@@ -122,9 +130,9 @@ O `.exe` fica em `build\windows\x64\runner\Release\`. Para distribuir, copie a p
 - ✅ Conversões nativas de imagem e imagem → PDF
 - ✅ Ponte COM com Word, Excel e PowerPoint
 - ✅ Cadeia de fallback, Lixeira, cancelamento, "Enviar para" e autoteste
-- ✅ Testes unitários e de widget
-- ⏳ Build release e validação ponta a ponta no app compilado
-- ⏳ Validação com Acrobat Pro, LibreOffice e pdf2docx instalados
+- ✅ Testes unitários, de widget e de integração com o Office
+- ✅ Build release validado ponta a ponta pelo autoteste (imagens, PDF → imagem, Word, Excel, PowerPoint, juntar PDF e Lixeira)
+- ⏳ Validação com Acrobat Pro/Standard licenciado, LibreOffice e pdf2docx instalados
 
 ## > Habilidades Testadas
 
