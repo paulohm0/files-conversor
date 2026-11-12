@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,11 +13,18 @@ import 'features/conversion/presentation/cubit/conversion_cubit.dart';
 import 'features/conversion/presentation/cubit/engines_cubit.dart';
 import 'features/conversion/presentation/pages/home_page.dart';
 import 'features/diagnostics/presentation/diagnostics_cubit.dart';
+import 'features/diagnostics/presentation/headless_self_test.dart';
 import 'features/settings/presentation/settings_cubit.dart';
 
-/// [args]: arquivos recebidos pelo "Enviar para" do Explorer.
+/// [args]: arquivos recebidos pelo "Enviar para" do Explorer, ou
+/// `--autoteste [pasta]` para rodar o diagnóstico sem abrir a janela.
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (args.isNotEmpty && args.first == '--autoteste') {
+    await pdfrxFlutterInitialize();
+    await configureDependencies();
+    exit(await runHeadlessSelfTest(args.length > 1 ? args[1] : null));
+  }
   await windowManager.ensureInitialized();
   await windowManager.waitUntilReadyToShow(
     const WindowOptions(
