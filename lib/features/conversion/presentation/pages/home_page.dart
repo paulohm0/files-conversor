@@ -15,6 +15,7 @@ import '../../domain/usecases/get_available_targets.dart';
 import '../cubit/conversion_cubit.dart';
 import '../cubit/conversion_state.dart';
 import '../cubit/engines_cubit.dart';
+import '../widgets/capabilities_footer.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/file_list.dart';
 import '../widgets/format_bar.dart';
@@ -331,7 +332,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          EnginesFooter(
+          CapabilitiesFooter(
             engines: engines.availability,
             detected: engines.detected,
           ),

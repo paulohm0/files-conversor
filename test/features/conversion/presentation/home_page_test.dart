@@ -88,7 +88,13 @@ void main() {
       find.text('Adicione arquivos para ver os formatos disponíveis.'),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('engines-footer')), findsOneWidget);
+    expect(
+      find.text(
+        'Este computador converte: imagens · PDF · documentos',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Motores'), findsNothing);
   });
 
   testWidgets('clicking the drop area opens the file dialog', (tester) async {

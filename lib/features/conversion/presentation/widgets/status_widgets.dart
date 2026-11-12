@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/engine_availability.dart';
 import '../cubit/conversion_state.dart';
 
 /// Barra de progresso com botão cancelar e o botão do registro.
@@ -132,62 +131,3 @@ class _LogPanelState extends State<LogPanel> {
   }
 }
 
-/// Rodapé com os motores detectados.
-class EnginesFooter extends StatelessWidget {
-  const EnginesFooter({
-    required this.engines,
-    required this.detected,
-    super.key,
-  });
-
-  final EngineAvailability engines;
-  final bool detected;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final style = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: scheme.onSurfaceVariant);
-    return Container(
-      key: const Key('engines-footer'),
-      color: scheme.surfaceContainerHigh,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-      child: Row(
-        children: [
-          Text('Motores:', style: style),
-          const SizedBox(width: 10),
-          if (!detected)
-            Text('detectando...', style: style)
-          else
-            Expanded(
-              child: Wrap(
-                spacing: 14,
-                children: [
-                  for (final name in EngineNames.all)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          engines.has(name) ? Icons.check_circle : Icons.cancel,
-                          size: 14,
-                          color: engines.has(name)
-                              ? scheme.primary
-                              : scheme.outline,
-                          semanticLabel: engines.has(name)
-                              ? 'disponível'
-                              : 'não encontrado',
-                        ),
-                        const SizedBox(width: 4),
-                        Text(name, style: style),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
