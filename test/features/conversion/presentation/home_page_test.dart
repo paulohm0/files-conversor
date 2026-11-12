@@ -144,6 +144,24 @@ void main() {
     expect(find.text('Pendente'), findsOneWidget);
   });
 
+  testWidgets('test icon opens a plain-language dialog', (tester) async {
+    await pump(tester);
+    expect(find.text('Diagnóstico'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('test-conversions')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Testar conversões'), findsWidgets);
+    expect(
+      find.text('Confira se as conversões funcionam neste computador.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('run-diagnostics')), findsOneWidget);
+    await tester.tap(find.text('Fechar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('run-diagnostics')), findsNothing);
+  });
+
   testWidgets('log panel toggles', (tester) async {
     await pump(tester);
     expect(find.byKey(const Key('log-panel')), findsNothing);
