@@ -4,17 +4,33 @@
     Word, Excel, PowerPoint, Acrobat, leitura de HEIC/HEIF e o atalho
     "Enviar para".
 
-    Fica em execução durante um lote. Protocolo (uma linha por mensagem):
-      entrada : base64( JSON UTF-8 )            { action, in, out, fmt, ... }
-      saída   : "@@" + base64( JSON UTF-8 )     { ok, data | error, code }
-    A ação "close" (ou o fim da entrada) fecha os aplicativos e encerra.
+    Fica em execução durante um lote e conversa por uma caixa de mensagens em
+    arquivos (o stdin do PowerShell 5.1 perde linhas quando o processo é
+    iniciado pelo Dart):
+      pedido   : <Mailbox>\req_N.json   { action, in, out, fmt, ... }
+      resposta : <Mailbox>\resp_N.json  { ok, data | error, code }
+    Os dois lados gravam como .tmp e renomeiam, então nunca leem pela metade.
+    A ação "close" fecha os aplicativos e encerra; a ponte também encerra
+    sozinha se o processo ParentPid (o app) deixar de existir.
 
     Não acessa a rede e não lê nada além dos arquivos indicados em cada pedido.
 #>
+param(
+    [Parameter(Mandatory = $true)][string]$Mailbox,
+    [int]$ParentPid = 0
+)
 
 $ErrorActionPreference = 'Stop'
 $AcrobatBrokenCode = 'ACROBAT_BROKEN'
 $script:ErrorCode = $null
+
+# Rastreamento opcional para depuração: defina CONVERSOR_BRIDGE_LOG com o
+# caminho de um arquivo de texto.
+function Write-Trace([string]$text) {
+    if ($env:CONVERSOR_BRIDGE_LOG) {
+        try { Add-Content -LiteralPath $env:CONVERSOR_BRIDGE_LOG -Value ((Get-Date -Format 'HH:mm:ss.fff') + '  ' + $text) } catch { }
+    }
+}
 
 function Release-Com($obj) {
     if ($obj) { try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($obj) } catch { } }
@@ -267,7 +283,13 @@ function Close-Engines {
         Release-Com $script:AcroApp; $script:AcroApp = $null
     }
     if ($script:Word) {
-        try { if ($script:Word.Documents.Count -eq 0) { $script:Word.Quit(0) } } catch { }
+        try {
+            $count = $script:Word.Documents.Count
+            Write-Trace "Word: $count documento(s) abertos no fechamento"
+            # Quit(0) falha: o parâmetro é por referência no COM do Word.
+            # Sem documentos abertos não há o que salvar, então sem argumento.
+            if ($count -eq 0) { $script:Word.Quit() }
+        } catch { Write-Trace "Word.Quit falhou: $(Get-ErrorMessage $_)" }
         Release-Com $script:Word; $script:Word = $null
     }
     if ($script:Excel) {
@@ -284,35 +306,52 @@ function Close-Engines {
 function Invoke-Action($req) {
     switch ($req.action) {
         'ping' { return @{ version = $PSVersionTable.PSVersion.ToString() } }
-        'word' { Convert-WithWord $req.in $req.out $req.fmt }
-        'excel' { Convert-WithExcel $req.in $req.out $req.fmt }
-        'powerpoint' { Convert-WithPowerPoint $req.in $req.out $req.fmt }
-        'acrobat' { Convert-WithAcrobat $req.in $req.out $req.fmt }
-        'wic' { Convert-WicToPng $req.in $req.out }
+        # Conversões não devolvem dados: descarta qualquer saída do COM.
+        'word' { $null = Convert-WithWord $req.in $req.out $req.fmt }
+        'excel' { $null = Convert-WithExcel $req.in $req.out $req.fmt }
+        'powerpoint' { $null = Convert-WithPowerPoint $req.in $req.out $req.fmt }
+        'acrobat' { $null = Convert-WithAcrobat $req.in $req.out $req.fmt }
+        'wic' { $null = Convert-WicToPng $req.in $req.out }
         'sendto' { return (Install-SendTo $req.exe) }
-        'sample-slides' { New-SampleSlides $req.pptx $req.ppt }
+        'sample-slides' { $null = New-SampleSlides $req.pptx $req.ppt }
         default { throw "Ação desconhecida: $($req.action)" }
     }
     return $null
 }
 
 # ---------------------------------------------------------------------------
-# Laço principal
+# Laço principal: caixa de mensagens em arquivos
 # ---------------------------------------------------------------------------
-$stdin = New-Object IO.StreamReader([Console]::OpenStandardInput(), [Text.Encoding]::ASCII)
-$stdout = New-Object IO.StreamWriter([Console]::OpenStandardOutput(), [Text.Encoding]::ASCII)
-$stdout.AutoFlush = $true
 $utf8 = New-Object Text.UTF8Encoding($false)
+if (-not $Mailbox -or -not [IO.Directory]::Exists($Mailbox)) { throw 'Pasta da caixa de mensagens não encontrada.' }
 
+function Test-ParentAlive {
+    if ($ParentPid -le 0) { return $true }
+    return [bool](Get-Process -Id $ParentPid -ErrorAction SilentlyContinue)
+}
+
+$next = 1
+$idleTicks = 0
 try {
-    while ($null -ne ($line = $stdin.ReadLine())) {
-        $line = $line.Trim()
-        if (-not $line) { continue }
+    while ($true) {
+        $reqPath = Join-Path $Mailbox "req_$next.json"
+        if (-not [IO.File]::Exists($reqPath)) {
+            Start-Sleep -Milliseconds 40
+            # A cada ~2 s confere se o app ainda está aberto.
+            $idleTicks++
+            if ($idleTicks -ge 50) {
+                $idleTicks = 0
+                if (-not (Test-ParentAlive)) { Write-Trace 'app encerrado; saindo'; break }
+            }
+            continue
+        }
+        $idleTicks = 0
         $script:ErrorCode = $null
         $resp = @{ ok = $true }
         $close = $false
         try {
-            $req = ConvertFrom-Json ($utf8.GetString([Convert]::FromBase64String($line)))
+            $req = ConvertFrom-Json ([IO.File]::ReadAllText($reqPath, $utf8))
+            Write-Trace "pedido $next : $($req.action)"
             if ($req.action -eq 'close') { $close = $true }
             else {
                 $data = Invoke-Action $req
@@ -321,10 +360,16 @@ try {
         } catch {
             $resp = @{ ok = $false; error = (Get-ErrorMessage $_); code = $script:ErrorCode }
         }
+        try { [IO.File]::Delete($reqPath) } catch { }
+        Write-Trace "concluído $next : ok=$($resp.ok) $($resp.error)"
         if ($close) { break }
         $json = ConvertTo-Json $resp -Compress -Depth 4
-        $stdout.WriteLine('@@' + [Convert]::ToBase64String($utf8.GetBytes($json)))
+        $tmp = Join-Path $Mailbox "resp_$next.tmp"
+        [IO.File]::WriteAllText($tmp, $json, $utf8)
+        [IO.File]::Move($tmp, (Join-Path $Mailbox "resp_$next.json"))
+        $next++
     }
 } finally {
     Close-Engines
+    Write-Trace 'ponte encerrada'
 }

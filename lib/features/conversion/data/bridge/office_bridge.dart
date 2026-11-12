@@ -54,22 +54,26 @@ class AssetBridgeScriptLocator implements BridgeScriptLocator {
 }
 
 /// Mantém um PowerShell 5.1 (STA) vivo durante o lote, para reaproveitar as
-/// instâncias do Office. Protocolo: uma linha base64(JSON UTF-8) por pedido e
-/// uma linha `@@base64(JSON)` por resposta.
+/// instâncias do Office. A conversa é por arquivos numa pasta temporária
+/// (`req_N.json` / `resp_N.json`): o stdin do PowerShell 5.1 iniciado pelo
+/// Dart entrega só a primeira linha, então não serve como canal.
 class PowerShellOfficeBridge implements OfficeBridge {
   PowerShellOfficeBridge(
     this._locator, {
     this.callTimeout = const Duration(minutes: 10),
+    this.pollInterval = const Duration(milliseconds: 40),
   });
 
   static const acrobatBrokenCode = 'ACROBAT_BROKEN';
-  static const _marker = '@@';
 
   final BridgeScriptLocator _locator;
   final Duration callTimeout;
+  final Duration pollInterval;
 
   Process? _process;
-  StreamIterator<String>? _lines;
+  Directory? _mailbox;
+  int _next = 1;
+  bool _exited = false;
   Future<void> _queue = Future.value();
 
   @override
@@ -77,7 +81,7 @@ class PowerShellOfficeBridge implements OfficeBridge {
     String action, [
     Map<String, Object?> args = const {},
   ]) {
-    // Um pedido por vez: o processo responde na ordem em que recebe.
+    // Um pedido por vez: a ponte processa na ordem dos números.
     final completer = Completer<Map<String, Object?>>();
     _queue = _queue.then((_) async {
       try {
@@ -93,48 +97,64 @@ class PowerShellOfficeBridge implements OfficeBridge {
     String action,
     Map<String, Object?> args,
   ) async {
-    final process = await _ensureStarted();
-    final payload = base64.encode(utf8.encode(jsonEncode({'action': action, ...args})));
-    process.stdin.writeln(payload);
-    await process.stdin.flush();
+    await _ensureStarted();
+    final number = _next++;
+    _writeRequest(number, {'action': action, ...args});
 
     final Map<String, Object?> response;
     try {
-      response = await _readResponse().timeout(callTimeout);
+      response = await _awaitResponse(number).timeout(callTimeout);
     } on TimeoutException {
       _kill();
       throw ConversionException('Tempo esgotado (${callTimeout.inSeconds} s).');
     }
     if (response['ok'] == true) {
       final data = response['data'];
-      return data is Map<String, Object?> ? data : const {};
+      return data is Map ? data.cast<String, Object?>() : const {};
     }
-    final message = (response['error'] as String?) ?? 'Falha na ponte PowerShell.';
+    final message =
+        (response['error'] as String?) ?? 'Falha na ponte PowerShell.';
     if (response['code'] == acrobatBrokenCode) {
       throw EngineUnavailableException(EngineNames.acrobat, message);
     }
     throw ConversionException(message);
   }
 
-  Future<Map<String, Object?>> _readResponse() async {
-    final lines = _lines!;
-    while (await lines.moveNext()) {
-      final line = lines.current.trim();
-      if (!line.startsWith(_marker)) continue;
-      final json = utf8.decode(base64.decode(line.substring(_marker.length)));
-      return (jsonDecode(json) as Map).cast<String, Object?>();
-    }
-    _kill();
-    throw const ConversionException(
-      'A ponte PowerShell encerrou inesperadamente.',
-    );
+  void _writeRequest(int number, Map<String, Object?> request) {
+    final dir = _mailbox!.path;
+    final tmp = File(p.join(dir, 'req_$number.tmp'))
+      ..writeAsStringSync(jsonEncode(request), flush: true);
+    tmp.renameSync(p.join(dir, 'req_$number.json'));
   }
 
-  Future<Process> _ensureStarted() async {
-    final existing = _process;
-    if (existing != null) return existing;
+  Future<Map<String, Object?>> _awaitResponse(int number) async {
+    final file = File(p.join(_mailbox!.path, 'resp_$number.json'));
+    while (!file.existsSync()) {
+      if (_exited) {
+        _kill();
+        throw const ConversionException(
+          'A ponte PowerShell encerrou inesperadamente.',
+        );
+      }
+      await Future<void>.delayed(pollInterval);
+    }
+    final text = file.readAsStringSync();
+    try {
+      file.deleteSync();
+    } on FileSystemException {
+      // A pasta inteira é apagada no fim.
+    }
+    return (jsonDecode(text) as Map).cast<String, Object?>();
+  }
+
+  Future<void> _ensureStarted() async {
+    if (_process != null) return;
 
     final script = await _locator.locate();
+    final mailbox = _mailbox =
+        Directory.systemTemp.createTempSync('conversor_ponte_');
+    _next = 1;
+    _exited = false;
     final systemRoot = Platform.environment['SystemRoot'] ?? r'C:\Windows';
     final powershell = p.join(
       systemRoot,
@@ -151,15 +171,18 @@ class PowerShellOfficeBridge implements OfficeBridge {
       'Bypass',
       '-File',
       script,
+      '-Mailbox',
+      mailbox.path,
+      '-ParentPid',
+      '$pid',
     ]);
-    // Drena o stderr para o processo nunca bloquear por buffer cheio.
+    // Drena as saídas para o processo nunca bloquear por buffer cheio.
+    unawaited(process.stdout.drain<void>());
     unawaited(process.stderr.drain<void>());
-    _lines = StreamIterator(
-      process.stdout
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter()),
-    );
-    return _process = process;
+    unawaited(process.exitCode.then((_) {
+      if (identical(_process, process)) _exited = true;
+    }));
+    _process = process;
   }
 
   /// Pede para a ponte fechar os aplicativos (só os que não têm documentos
@@ -170,18 +193,13 @@ class PowerShellOfficeBridge implements OfficeBridge {
       final process = _process;
       if (process == null) return;
       try {
-        process.stdin.writeln(
-          base64.encode(utf8.encode(jsonEncode({'action': 'close'}))),
-        );
-        await process.stdin.flush();
-        await process.stdin.close();
-        await process.exitCode.timeout(const Duration(seconds: 30));
+        _writeRequest(_next++, const {'action': 'close'});
+        await process.exitCode.timeout(const Duration(seconds: 60));
       } on Object {
         process.kill();
       } finally {
-        await _lines?.cancel();
-        _lines = null;
         _process = null;
+        _deleteMailbox();
       }
     });
     _queue = done.catchError((Object _) {});
@@ -190,8 +208,16 @@ class PowerShellOfficeBridge implements OfficeBridge {
 
   void _kill() {
     _process?.kill();
-    unawaited(_lines?.cancel());
-    _lines = null;
     _process = null;
+    _deleteMailbox();
+  }
+
+  void _deleteMailbox() {
+    try {
+      _mailbox?.deleteSync(recursive: true);
+    } on FileSystemException {
+      // Fica para a limpeza do Windows.
+    }
+    _mailbox = null;
   }
 }
