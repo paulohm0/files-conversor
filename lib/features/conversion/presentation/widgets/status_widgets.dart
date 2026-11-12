@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme.dart';
+
 import '../cubit/conversion_state.dart';
 
 /// Barra de progresso com botão cancelar e o botão do registro.
@@ -23,7 +25,7 @@ class ProgressRow extends StatelessWidget {
       children: [
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppTheme.borderRadius,
             child: LinearProgressIndicator(
               minHeight: 10,
               value: state.running && state.progressDone == 0

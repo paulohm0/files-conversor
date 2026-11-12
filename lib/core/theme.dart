@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 abstract final class AppTheme {
   static const _seed = Color(0xFF0067C0);
 
+  /// Arredondamento padrão de todos os componentes.
+  static const double radius = 8;
+  static final BorderRadius borderRadius = BorderRadius.circular(radius);
+  static final RoundedRectangleBorder _shape =
+      RoundedRectangleBorder(borderRadius: borderRadius);
+
   static ThemeData light() => _build(Brightness.light);
 
   static ThemeData dark() => _build(Brightness.dark);
@@ -11,19 +17,53 @@ abstract final class AppTheme {
   static ThemeData _build(Brightness brightness) {
     final scheme =
         ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       fontFamily: 'Segoe UI',
       visualDensity: VisualDensity.compact,
+    );
+    final buttonShape = WidgetStatePropertyAll<OutlinedBorder>(_shape);
+    return base.copyWith(
       extensions: [StatusColors.of(brightness, scheme)],
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
         color: scheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: ButtonStyle(shape: buttonShape),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: ButtonStyle(shape: buttonShape),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: ButtonStyle(shape: buttonShape),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(shape: buttonShape),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: buttonShape,
+          textStyle: WidgetStatePropertyAll(base.textTheme.bodyMedium),
+        ),
+      ),
+      dialogTheme: DialogThemeData(shape: _shape),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: scheme.inverseSurface,
+          borderRadius: borderRadius,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(shape: _shape),
+      checkboxTheme: const CheckboxThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(3)),
         ),
       ),
     );

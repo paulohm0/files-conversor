@@ -15,15 +15,15 @@ class EmptyDropArea extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppTheme.borderRadius,
       child: InkWell(
         key: const Key('empty-drop-area'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.borderRadius,
         onTap: onTap,
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppTheme.borderRadius,
             border: Border.all(color: scheme.outlineVariant, width: 1.5),
           ),
           child: Column(
