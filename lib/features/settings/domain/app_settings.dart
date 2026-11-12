@@ -17,7 +17,6 @@ class AppSettings extends Equatable {
     this.confirmBeforeConvert = true,
     this.showLog = false,
     this.showOptions = true,
-    this.startWithWindows = true,
     this.sendToTarget = '',
   });
 
@@ -46,9 +45,6 @@ class AppSettings extends Equatable {
   final bool confirmBeforeConvert;
   final bool showLog;
   final bool showOptions;
-
-  /// Abrir minimizado junto com o Windows.
-  final bool startWithWindows;
 
   /// Executável para o qual o atalho "Enviar para" foi criado pela última
   /// vez; se o app mudar de pasta, o atalho é recriado.
@@ -81,11 +77,9 @@ class AppSettings extends Equatable {
     bool? confirmBeforeConvert,
     bool? showLog,
     bool? showOptions,
-    bool? startWithWindows,
     String? sendToTarget,
   }) =>
       AppSettings(
-        startWithWindows: startWithWindows ?? this.startWithWindows,
         sendToTarget: sendToTarget ?? this.sendToTarget,
         jpgPreset: jpgPreset ?? this.jpgPreset,
         dpiPreset: dpiPreset ?? this.dpiPreset,
@@ -113,7 +107,6 @@ class AppSettings extends Equatable {
         confirmBeforeConvert,
         showLog,
         showOptions,
-        startWithWindows,
         sendToTarget,
       ];
 }

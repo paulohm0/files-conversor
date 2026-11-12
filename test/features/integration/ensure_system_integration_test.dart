@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeSystem implements SystemIntegration {
   bool shortcut = false;
-  String? startup;
   int installs = 0;
   bool failInstall = false;
 
@@ -17,15 +16,6 @@ class _FakeSystem implements SystemIntegration {
     installs++;
     shortcut = true;
   }
-
-  @override
-  String? startupCommand() => startup;
-
-  @override
-  void registerStartup(String command) => startup = command;
-
-  @override
-  void unregisterStartup() => startup = null;
 }
 
 void main() {
@@ -66,32 +56,6 @@ void main() {
       final result = await ensure.ensureSendTo('');
       expect(result.newTarget, isNull);
       expect(result.message, contains('Não foi possível'));
-    });
-  });
-
-  group('Iniciar com o Windows', () {
-    test('registers the app to open minimized', () {
-      final message = ensure.syncStartup(enabled: true);
-      expect(system.startup, '"$exe" --minimizado');
-      expect(message, contains('minimizado'));
-    });
-
-    test('is idempotent when already registered', () {
-      system.startup = '"$exe" --minimizado';
-      expect(ensure.syncStartup(enabled: true), isNull);
-    });
-
-    test('updates the command when the app moved', () {
-      system.startup = r'"D:\antigo\conversor.exe" --minimizado';
-      ensure.syncStartup(enabled: true);
-      expect(system.startup, '"$exe" --minimizado');
-    });
-
-    test('removes the registration when disabled', () {
-      system.startup = '"$exe" --minimizado';
-      expect(ensure.syncStartup(enabled: false), contains('não abre mais'));
-      expect(system.startup, isNull);
-      expect(ensure.syncStartup(enabled: false), isNull);
     });
   });
 }
