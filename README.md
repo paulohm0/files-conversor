@@ -26,8 +26,7 @@ O projeto nasceu como um script em PowerShell + Windows Forms (~2000 linhas) que
 - Original vai para a **Lixeira** (nunca exclusão permanente) só se a opção estiver marcada e a saída existir e não estiver vazia
 - Histórico na lista: itens convertidos podem ser selecionados e reconvertidos
 - Atalho "Enviar para" do Explorer sempre instalado: o app confere a cada abertura e recria se faltar ou se o `.exe` mudar de pasta (os arquivos chegam por `main(args)`)
-- Opção "Iniciar com o Windows": abre minimizado no logon, pela chave `Run` do usuário (sem precisar de administrador)
-- Tela de diagnóstico: autoteste que cria arquivos de exemplo, testa cada motor isoladamente e gera relatório `.txt` e `.csv`
+- "Testar conversões" (ícone no canto superior direito): cria arquivos de exemplo, testa cada motor isoladamente e mostra um resumo em linguagem simples ("Imagens: funcionando", "Adobe Acrobat: não funciona neste computador" com o motivo); o relatório técnico `.txt`/`.csv` fica disponível em "Ver relatório completo"
 - Tema claro e escuro seguindo o sistema, interface em português
 
 **Atalhos:** Ctrl+O adiciona · Ctrl+V cola · Ctrl+A seleciona tudo · Delete remove · Enter repete o último formato · Esc cancela ou limpa a seleção
@@ -45,7 +44,7 @@ lib/
       data/              # Motores, codec de imagens, ponte PowerShell, registro/Lixeira/Explorer do Windows
       presentation/      # Cubits, tela principal e widgets
     settings/            # Opções persistidas (SettingsCubit)
-    integration/         # "Enviar para" e inicialização com o Windows
+    integration/         # Atalho "Enviar para" sempre instalado
     diagnostics/         # Autoteste (DiagnosticsCubit)
   main.dart
 assets/
