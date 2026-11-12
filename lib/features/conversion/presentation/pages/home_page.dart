@@ -369,6 +369,22 @@ class _Toolbar extends StatelessWidget {
           waitDuration: const Duration(milliseconds: 600),
           child: child,
         );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buttons(tip)),
+        // Discreto, no canto: testa as conversões neste computador.
+        IconButton(
+          key: const Key('test-conversions'),
+          tooltip: 'Testar conversões',
+          onPressed: enabled ? onDiagnostics : null,
+          icon: const Icon(Icons.fact_check_outlined),
+        ),
+      ],
+    );
+  }
+
+  Widget _buttons(Widget Function(String, Widget) tip) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -404,15 +420,6 @@ class _Toolbar extends StatelessWidget {
           onPressed: enabled && hasItems ? onClear : null,
           icon: const Icon(Icons.clear_all),
           label: const Text('Limpar lista'),
-        ),
-        const SizedBox(width: 12),
-        tip(
-          'Autoteste com arquivos de exemplo e relatório',
-          TextButton.icon(
-            onPressed: enabled ? onDiagnostics : null,
-            icon: const Icon(Icons.fact_check_outlined),
-            label: const Text('Diagnóstico'),
-          ),
         ),
       ],
     );

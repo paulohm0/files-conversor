@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme.dart';
 import '../../conversion/domain/entities/engine_availability.dart';
-import '../domain/diagnostic_models.dart';
 import 'diagnostics_cubit.dart';
+import 'diagnostics_summary.dart';
 
-/// Tela de diagnóstico: roda o autoteste e mostra o relatório.
+/// Caixa "Testar conversões": roda o autoteste e mostra um resumo simples.
+/// O relatório técnico fica em arquivo, acessível por "Ver relatório
+/// completo".
 Future<void> showDiagnosticsDialog(
   BuildContext context, {
   required DiagnosticsCubit Function() createCubit,
@@ -33,46 +35,43 @@ class _DiagnosticsDialog extends StatelessWidget {
     return BlocBuilder<DiagnosticsCubit, DiagnosticsState>(
       builder: (context, state) {
         final cubit = context.read<DiagnosticsCubit>();
-        final started = state.running || state.finished;
         final folder = state.folder;
+        final Widget body;
+        if (state.running) {
+          body = _Running(state: state);
+        } else if (state.finished) {
+          body = _Result(summary: DiagnosticsSummary(state.rows));
+        } else if (state.messages.isNotEmpty) {
+          body = const Text(
+            'O teste foi interrompido antes de terminar. Tente de novo.',
+          );
+        } else {
+          body = const _Intro();
+        }
         return AlertDialog(
-          title: const Text('Diagnóstico (autoteste)'),
-          content: SizedBox(
-            width: 720,
-            height: 440,
-            child: started
-                ? _Report(state: state)
-                : const Text(
-                    'O autoteste cria arquivos de exemplo em uma pasta '
-                    'temporária e testa todas as conversões com cada motor '
-                    'instalado, um de cada vez.\n\n'
-                    'Pode levar alguns minutos. Não use o Word, o Excel nem o '
-                    'PowerPoint enquanto o teste roda.\n\n'
-                    'Um arquivo de teste ("teste_lixeira.png") é enviado para '
-                    'a Lixeira para conferir essa função.',
-                  ),
-          ),
+          title: const Text('Testar conversões'),
+          content: SizedBox(width: 560, child: body),
           actions: [
             if (state.finished && folder != null)
               TextButton(
                 onPressed: () => onOpenFolder(folder),
-                child: const Text('Abrir pasta do relatório'),
+                child: const Text('Ver relatório completo'),
               ),
             if (state.running)
               TextButton(
                 onPressed: state.cancelling ? null : cubit.cancel,
-                child: Text(state.cancelling ? 'Cancelando...' : 'Cancelar'),
+                child: Text(state.cancelling ? 'Parando...' : 'Parar teste'),
               )
             else
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Fechar'),
               ),
-            if (!started)
+            if (!state.running && !state.finished)
               FilledButton(
                 key: const Key('run-diagnostics'),
                 onPressed: () => cubit.run(engines),
-                child: const Text('Iniciar teste'),
+                child: const Text('Começar teste'),
               ),
           ],
         );
@@ -81,81 +80,160 @@ class _DiagnosticsDialog extends StatelessWidget {
   }
 }
 
-class _Report extends StatelessWidget {
-  const _Report({required this.state});
+class _Intro extends StatelessWidget {
+  const _Intro();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Confira se as conversões funcionam neste computador.',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        SizedBox(height: 12),
+        Text(
+          'O teste cria alguns arquivos de exemplo e tenta convertê-los para '
+          'todos os formatos. Seus arquivos não são alterados.',
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Leva alguns minutos. Enquanto isso, evite usar o Word, o Excel e o '
+          'PowerPoint.',
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Um dos arquivos de exemplo vai para a Lixeira, só para testar '
+          'essa opção. Você pode apagá-lo depois.',
+        ),
+      ],
+    );
+  }
+}
+
+class _Running extends StatelessWidget {
+  const _Running({required this.state});
 
   final DiagnosticsState state;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.statusColors;
-    final lastMessage = state.messages.isEmpty ? '' : state.messages.last;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (state.running) ...[
-          const LinearProgressIndicator(),
-          const SizedBox(height: 8),
-          Text(lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ] else
-          Text(
-            '${state.count(DiagnosticOutcome.ok)} OK   |   '
-            '${state.count(DiagnosticOutcome.error)} com erro   |   '
-            '${state.count(DiagnosticOutcome.skipped)} ignorados',
-            key: const Key('diagnostics-summary'),
-            style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                  color: state.count(DiagnosticOutcome.error) > 0
-                      ? colors.error
-                      : colors.done,
-                ),
-          ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: scheme.outlineVariant),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SelectionArea(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8),
-                reverse: state.running,
-                itemCount: state.rows.length,
-                itemBuilder: (context, index) {
-                  final row = state.running
-                      ? state.rows[state.rows.length - 1 - index]
-                      : state.rows[index];
-                  final color = switch (row.outcome) {
-                    DiagnosticOutcome.ok => colors.done,
-                    DiagnosticOutcome.error => colors.error,
-                    DiagnosticOutcome.skipped => colors.muted,
-                  };
-                  return Text(
-                    '[${row.outcome.label.padRight(8)}] '
-                    '${row.test.padRight(12)} '
-                    '${row.input.padRight(5)} -> ${row.output.padRight(5)} '
-                    '${row.detail}',
-                    style: TextStyle(
-                      fontFamily: 'Consolas',
-                      fontSize: 12.5,
-                      height: 1.35,
-                      color: color,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+        Text(DiagnosticsSummary.currentStep(state.messages)),
+        const SizedBox(height: 12),
+        const LinearProgressIndicator(),
+        const SizedBox(height: 12),
+        Text(
+          state.rows.isEmpty
+              ? 'Isso pode levar alguns minutos.'
+              : '${state.rows.length} conversões testadas até agora.',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
-        if (state.reportPath != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Relatório salvo em: ${state.reportPath}',
-            style: Theme.of(context).textTheme.bodySmall,
+      ],
+    );
+  }
+}
+
+class _Result extends StatelessWidget {
+  const _Result({required this.summary});
+
+  final DiagnosticsSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.statusColors;
+    final scheme = Theme.of(context).colorScheme;
+    final allGood = summary.failed == 0;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 440),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                allGood ? Icons.check_circle : Icons.info,
+                color: allGood ? colors.done : scheme.primary,
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  summary.headline,
+                  key: const Key('diagnostics-headline'),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(summary.subtitle),
+          const SizedBox(height: 14),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: summary.groups.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) =>
+                  _GroupTile(group: summary.groups[index]),
+            ),
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({required this.group});
+
+  final SummaryGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.statusColors;
+    final (icon, color) = switch (group.status) {
+      GroupStatus.working => (Icons.check_circle_outline, colors.done),
+      GroupStatus.partial => (Icons.error_outline, colors.running),
+      GroupStatus.notWorking => (Icons.cancel_outlined, colors.error),
+    };
+    final explanation = group.explanation;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(group.title),
+                Text(
+                  group.statusText,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                ),
+                if (explanation != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    explanation,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
