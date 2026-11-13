@@ -41,6 +41,9 @@ WizardStyle=modern
 ; Fecha o Conversor se estiver aberto durante a instalação/atualização.
 CloseApplications=yes
 RestartApplications=no
+; Avisa o Windows ao final para recarregar os ícones; sem isso, ao instalar
+; uma versão nova por cima, os atalhos podem continuar com o ícone antigo.
+ChangesAssociations=yes
 
 [Languages]
 Name: "ptbr"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
